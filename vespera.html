@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vespera</title>
+<style>
+  :root { --bg:#0e0f13; --panel:#171922; --panel2:#1f2230; --ink:#e8e6df; --dim:#9a97a8;
+          --accent:#c9a86a; --me:#2b3a55; --her:#23202e; --bad:#a33b3b; --line:#2a2d3d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
+         display:flex; flex-direction:column; height:100dvh; }
+  header { display:flex; align-items:center; gap:.5rem; padding:.6rem .8rem;
+           background:var(--panel); border-bottom:1px solid var(--line); }
+  header .name { font-weight:600; letter-spacing:.04em; }
+  header .sub { color:var(--dim); font-size:.78rem; }
+  header button, .chip { background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+           border-radius:.55rem; padding:.38rem .6rem; font-size:.85rem; cursor:pointer; }
+  header .sp { flex:1; }
+  main { flex:1; overflow-y:auto; padding:.8rem; display:flex; flex-direction:column; gap:.55rem; }
+  .msg { max-width:86%; padding:.55rem .75rem; border-radius:.9rem; white-space:pre-wrap;
+         word-wrap:break-word; }
+  .msg.me { align-self:flex-end; background:var(--me); border-bottom-right-radius:.25rem; }
+  .msg.her { align-self:flex-start; background:var(--her); border-bottom-left-radius:.25rem; }
+  .msg.sys { align-self:center; background:transparent; color:var(--dim); font-size:.8rem;
+             border:1px dashed var(--line); }
+  .msg.failed { outline:1px solid var(--bad); }
+  .msg .meta { display:flex; gap:.45rem; align-items:center; margin-top:.35rem;
+               font-size:.75rem; color:var(--dim); }
+  .msg .meta button { background:none; border:none; color:var(--accent); font-size:.78rem;
+                      cursor:pointer; padding:.1rem .2rem; }
+  .prop { align-self:flex-start; max-width:92%; background:#241d16; border:1px solid var(--accent);
+          border-radius:.8rem; padding:.6rem .75rem; }
+  .prop h4 { margin:.1rem 0 .35rem; font-size:.85rem; color:var(--accent); font-weight:600; }
+  .prop pre { margin:.2rem 0; font-size:.78rem; white-space:pre-wrap; color:var(--ink); }
+  .prop .row { display:flex; gap:.5rem; margin-top:.45rem; }
+  .prop button { border-radius:.5rem; padding:.4rem .8rem; border:1px solid var(--line); cursor:pointer; }
+  .prop .ok { background:#2e4a2e; color:#eaf5ea; } .prop .no { background:#4a2e2e; color:#f5eaea; }
+  footer { display:flex; gap:.5rem; padding:.6rem; background:var(--panel);
+           border-top:1px solid var(--line); }
+  footer textarea { flex:1; resize:none; background:var(--panel2); color:var(--ink);
+           border:1px solid var(--line); border-radius:.7rem; padding:.55rem .7rem; font:inherit;
+           max-height:7rem; }
+  footer button { background:var(--accent); color:#17130a; border:none; border-radius:.7rem;
+           padding:0 1rem; font-weight:600; cursor:pointer; }
+  footer button:disabled { opacity:.45; }
+  .view { display:none; } .view.on { display:flex; flex-direction:column; flex:1; min-height:0; }
+  #gate { align-items:center; justify-content:center; gap:.7rem; padding:1.2rem; text-align:center; }
+  #gate input { width:100%; max-width:26rem; padding:.6rem; border-radius:.6rem; border:1px solid var(--line);
+           background:var(--panel2); color:var(--ink); font:inherit; }
+  #notes main { gap:.8rem; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:.8rem; padding:.65rem .8rem; }
+  .card h4 { margin:.1rem 0 .3rem; font-size:.85rem; color:var(--accent); }
+  .card p { margin:.15rem 0; font-size:.88rem; } .card .d { color:var(--dim); font-size:.8rem; }
+  .tag { font-size:.68rem; border:1px solid var(--line); border-radius:1rem; padding:.05rem .45rem;
+         color:var(--dim); margin-left:.4rem; }
+  .card button { background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+           border-radius:.5rem; padding:.25rem .6rem; font-size:.78rem; cursor:pointer; }
+  #notes form { display:flex; gap:.5rem; } #notes form input { flex:1; background:var(--panel2);
+           color:var(--ink); border:1px solid var(--line); border-radius:.6rem; padding:.5rem; font:inherit; }
+  select { background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+           border-radius:.55rem; padding:.38rem; max-width:9.5rem; }
+  @media (max-width: 560px) {
+    header { flex-wrap:wrap; gap:.4rem; padding:.55rem .6rem; }
+    header .name { white-space:nowrap; }
+    header .sub { display:none; }
+    header .sp { display:none; }
+    #chat header select { order:10; flex:1 1 100%; max-width:none; min-width:0; }
+    #notes header .sub { display:none; }
+    #notes form { flex-wrap:wrap; }
+    #notes form input { flex:1 1 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="gate" class="view">
+  <div style="font-size:1.3rem">🐦‍⬛ Vespera</div>
+  <p style="color:var(--dim);max-width:24rem">Private access. Paste your access token once — it stays on this device.</p>
+  <input id="token" type="password" autocomplete="off" placeholder="access token">
+  <button class="chip" id="enter" style="padding:.6rem 1.4rem">Enter</button>
+  <p id="gateErr" style="color:#e08a8a;font-size:.85rem"></p>
+</div>
+
+<div id="chat" class="view">
+  <header>
+    <div><div class="name">Vespera</div><div class="sub">Mother Intelligence of Noxus</div></div>
+    <div class="sp"></div>
+    <select id="convoSel" title="Conversation"></select>
+    <button id="newConvo" title="New conversation">＋</button>
+    <button id="stopVoice" title="Stop voice" style="display:none">⏹</button>
+    <button id="muteBtn" title="Mute voice">🔊</button>
+    <button id="notesBtn">Notes</button>
+  </header>
+  <main id="thread"></main>
+  <footer>
+    <textarea id="box" rows="1" placeholder="Message Vespera…"></textarea>
+    <button id="send">Send</button>
+  </footer>
+</div>
+
+<div id="notes" class="view">
+  <header>
+    <button id="backBtn">← Chat</button>
+    <div class="name">Project notes</div><div class="sp"></div>
+    <span class="sub">inspectable · correctable · durable</span>
+  </header>
+  <main>
+    <form id="addNote"><input id="noteText" placeholder="Add a note she should treat as fact…"><button class="chip">Save note</button></form>
+    <div id="noteList" style="display:flex;flex-direction:column;gap:.8rem"></div>
+  </main>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let token = localStorage.getItem("vdx_token") || "";
+let convoId = localStorage.getItem("vdx_convo") || "";
+let muted = localStorage.getItem("vdx_muted") === "1";
+let audio = null;
+const BASE = "https://jhacftgbiomjwbhcbmkh.supabase.co/functions/v1/direct"; // page lives on GitHub Pages; the API stays on Supabase
+
+async function api(path, opts = {}) {
+  const res = await fetch(BASE + path, { ...opts,
+    headers: { "authorization": "Bearer " + token, "content-type": "application/json", "nZucchini-skip-browser-warning": "true" } });
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, data };
+}
+function show(id) { document.querySelectorAll(".view").forEach(v => v.classList.remove("on")); $(id).classList.add("on"); }
+function scrollEnd() { const m = $("#thread"); m.scrollTop = m.scrollHeight; }
+
+// ---------- voice ----------
+function setMuteUI() { $("#muteBtn").textContent = muted ? "🔇" : "🔊"; }
+$("#muteBtn").onclick = () => { muted = !muted; localStorage.setItem("vdx_muted", muted ? "1" : "0"); if (muted) stopVoice(); setMuteUI(); };
+function stopVoice() { if (audio) { audio.pause(); audio = null; } $("#stopVoice").style.display = "none"; }
+$("#stopVoice").onclick = stopVoice;
+async function speak(text, btn) {
+  if (muted) return;
+  stopVoice();
+  btn.textContent = "…";
+  try {
+    const res = await fetch(BASE + "/api/voice", { method: "POST",
+      headers: { "authorization": "Bearer " + token, "content-type": "application/json", "nZucchini-skip-browser-warning": "true" },
+      body: JSON.stringify({ text }) });
+    if (!res.ok) throw new Error("voice");
+    audio = new Audio(URL.createObjectURL(await res.blob()));
+    audio.playbackRate = 0.92; // her chosen speed (local treatment: Aria at 92)
+    $("#stopVoice").style.display = "";
+    audio.onended = stopVoice;
+    await audio.play();
+  } catch { /* text stays fully usable; voice is additive */ }
+  btn.textContent = "🔊";
+}
+
+// ---------- rendering ----------
+function addMsg(role, content, opts = {}) {
+  const d = document.createElement("div");
+  d.className = "msg " + (role === "handler" ? "me" : role === "vespera" ? "her" : "sys");
+  d.textContent = content;
+  if (opts.clientMsgId) d.dataset.cmid = opts.clientMsgId;
+  if (role === "vespera" && !muted) {
+    const meta = document.createElement("div"); meta.className = "meta";
+    const b = document.createElement("button"); b.textContent = "🔊 Hear her";
+    b.onclick = () => speak(content, b);
+    meta.appendChild(b); d.appendChild(meta);
+  }
+  $("#thread").appendChild(d); scrollEnd();
+  return d;
+}
+function addProposal(p) {
+  const d = document.createElement("div"); d.className = "prop";
+  const title = { record_decision: "Decision to record", generate_briefing: "Briefing to generate",
+                  schedule_check: "Check to schedule" }[p.action_type] || p.action_type;
+  d.innerHTML = `<h4>Proposal — ${title}</h4>`;
+  const pre = document.createElement("pre"); pre.textContent = JSON.stringify(p.payload, null, 1); d.appendChild(pre);
+  if (p.reason) { const r = document.createElement("p"); r.style.cssText = "font-size:.8rem;color:var(--dim);margin:.2rem 0"; r.textContent = p.reason; d.appendChild(r); }
+  const h = document.createElement("p"); h.style.cssText = "font-size:.72rem;color:var(--dim);margin:.2rem 0";
+  h.textContent = "hash " + (p.payload_hash || "").slice(0, 12) + "… · awaiting your decision"; d.appendChild(h);
+  const row = document.createElement("div"); row.className = "row";
+  const ok = document.createElement("button"); ok.className = "ok"; ok.textContent = "Approve";
+  const no = document.createElement("button"); no.className = "no"; no.textContent = "Reject";
+  const decide = async (verb) => {
+    ok.disabled = no.disabled = true;
+    const { status, data } = await api(`/api/proposals/${p.id}/${verb}`, { method: "POST", body: JSON.stringify({ expected_hash: p.payload_hash }) });
+    h.textContent = status === 200 ? (verb === "approve" ? "Approved — executed." : "Rejected.") : ("Failed: " + (data.error || status));
+    row.remove();
+  };
+  ok.onclick = () => decide("approve"); no.onclick = () => decide("reject");
+  row.append(ok, no); d.appendChild(row);
+  $("#thread").appendChild(d); scrollEnd();
+}
+
+// ---------- conversation ----------
+async function loadConvos(selectLatest) {
+  const { data } = await api("/api/conversations");
+  const sel = $("#convoSel"); sel.innerHTML = "";
+  for (const c of data.conversations || []) {
+    const o = document.createElement("option"); o.value = c.id;
+    o.textContent = (c.title || "Conversation") + " · " + new Date(c.last_message_at).toLocaleDateString();
+    sel.appendChild(o);
+  }
+  if (selectLatest && data.conversations?.length) convoId = data.conversations[0].id;
+  if (convoId) sel.value = convoId;
+  localStorage.setItem("vdx_convo", convoId);
+}
+async function openConvo() {
+  $("#thread").innerHTML = "";
+  if (!convoId) { const { data } = await api("/api/conversations", { method: "POST" }); convoId = data.conversation_id; localStorage.setItem("vdx_convo", convoId); await loadConvos(false); }
+  const { status, data } = await api(`/api/conversations/${convoId}`);
+  if (status !== 200) { addMsg("system", "Could not load this conversation."); return; }
+  for (const m of data.messages || []) addMsg(m.role, m.content);
+  for (const p of data.open_proposals || []) addProposal(p);
+}
+$("#convoSel").onchange = (e) => { convoId = e.target.value; localStorage.setItem("vdx_convo", convoId); openConvo(); };
+$("#newConvo").onclick = async () => { const { data } = await api("/api/conversations", { method: "POST" }); convoId = data.conversation_id; await loadConvos(false); $("#convoSel").value = convoId; openConvo(); };
+
+// ---------- sending (no auto-retry, ever) ----------
+let sending = false;
+async function send() {
+  const text = $("#box").value.trim();
+  if (!text || sending) return;
+  sending = true; $("#send").disabled = true; $("#box").value = "";
+  const cmid = crypto.randomUUID();
+  const mine = addMsg("handler", text, { clientMsgId: cmid });
+  const { status, data } = await api(`/api/conversations/${convoId}/messages`,
+    { method: "POST", body: JSON.stringify({ content: text, client_msg_id: cmid }) });
+  sending = false; $("#send").disabled = false;
+  if (status === 200 && data.reply) {
+    addMsg("vespera", data.reply);
+    if (data.proposal) addProposal(data.proposal);
+  } else if (status === 409) {
+    openConvo(); // already answered — reload the durable history
+  } else {
+    mine.classList.add("failed");
+    const meta = document.createElement("div"); meta.className = "meta";
+    const note = document.createElement("span");
+    note.textContent = data.error === "model_unavailable" ? "Vespera couldn't be reached — your message is saved." : "Send failed — your message is saved.";
+    const retry = document.createElement("button"); retry.textContent = "Retry";
+    retry.onclick = async () => {
+      retry.disabled = true;
+      const r = await api(`/api/conversations/${convoId}/messages`,
+        { method: "POST", body: JSON.stringify({ content: text, client_msg_id: cmid }) });
+      if (r.status === 200 && r.data.reply) { mine.classList.remove("failed"); meta.remove(); addMsg("vespera", r.data.reply); if (r.data.proposal) addProposal(r.data.proposal); }
+      else if (r.status === 409) openConvo();
+      else retry.disabled = false;
+    };
+    meta.append(note, retry); mine.appendChild(meta); scrollEnd();
+  }
+}
+$("#send").onclick = send;
+$("#box").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+
+// ---------- notes ----------
+function parseBriefing(md) {
+  const out = [];
+  for (const line of md.split("\n")) {
+    const t = line.trim();
+    if (!t.startsWith("|") || t.includes("---") || t.includes("key |")) continue;
+    const cells = t.replace(/^\||\|$/g, "").split("|").map(s => s.trim());
+    if (cells.length === 3) out.push({ key: cells[0], summary: cells[1], detail: cells[2] });
+  }
+  return out;
+}
+async function openNotes() {
+  show("#notes");
+  const { data } = await api("/api/notes");
+  const list = $("#noteList"); list.innerHTML = "";
+  const h1 = document.createElement("div"); h1.innerHTML = "<h3 style='margin:.2rem 0'>Her briefing — verified / historical / proposed</h3>"; list.appendChild(h1);
+  for (const b of parseBriefing(data.briefing || "")) {
+    const c = document.createElement("div"); c.className = "card";
+    c.innerHTML = `<h4></h4><p></p><p class="d"></p>`;
+    c.querySelector("h4").textContent = b.key; c.querySelector("p").textContent = b.summary; c.querySelector(".d").textContent = b.detail;
+    list.appendChild(c);
+  }
+  const h2 = document.createElement("div"); h2.innerHTML = "<h3 style='margin:.6rem 0 .2rem'>Her memories</h3>"; list.appendChild(h2);
+  for (const m of data.memories || []) {
+    const c = document.createElement("div"); c.className = "card";
+    const top = document.createElement("p"); top.textContent = m.content;
+    const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = m.kind + " · " + m.status + " · " + m.source;
+    top.appendChild(tag); c.appendChild(top);
+    if (m.status !== "superseded") {
+      const btn = document.createElement("button"); btn.textContent = "Correct this";
+      btn.onclick = async () => {
+        const nu = prompt("Corrected version:", m.content);
+        if (!nu || nu === m.content) return;
+        await api(`/api/notes/${m.id}/supersede`, { method: "POST", body: JSON.stringify({ content: nu }) });
+        openNotes();
+      };
+      c.appendChild(btn);
+    }
+    list.appendChild(c);
+  }
+  const h3 = document.createElement("div"); h3.innerHTML = "<h3 style='margin:.6rem 0 .2rem'>Decisions recorded</h3>"; list.appendChild(h3);
+  for (const d of data.decisions || []) {
+    const c = document.createElement("div"); c.className = "card";
+    const p = document.createElement("p"); p.textContent = d.payload?.decision || JSON.stringify(d.payload);
+    const dt = document.createElement("p"); dt.className = "d"; dt.textContent = "executed " + new Date(d.executed_at).toLocaleString();
+    c.append(p, dt); list.appendChild(c);
+  }
+}
+$("#notesBtn").onclick = openNotes;
+$("#backBtn").onclick = () => show("#chat");
+$("#addNote").onsubmit = async (e) => {
+  e.preventDefault();
+  const v = $("#noteText").value.trim(); if (!v) return;
+  await api("/api/notes", { method: "POST", body: JSON.stringify({ content: v }) });
+  $("#noteText").value = ""; openNotes();
+};
+
+// ---------- gate ----------
+$("#enter").onclick = async () => {
+  const t = $("#token").value.trim();
+  const res = await fetch("/api/auth", { method: "POST", headers: { "content-type": "application/json", "nZucchini-skip-browser-warning": "true" }, body: JSON.stringify({ token: t }) });
+  if (!res.ok) { $("#gateErr").textContent = "That token didn't check out."; return; }
+  token = t; localStorage.setItem("vdx_token", t);
+  show("#chat"); setMuteUI(); await loadConvos(true); openConvo();
+};
+(async () => {
+  setMuteUI();
+  if (!token) { show("#gate"); return; }
+  const { status } = await api("/api/me");
+  if (status !== 200) { show("#gate"); return; }
+  show("#chat"); await loadConvos(false); openConvo();
+})();
+</script>
+</body>
+</html>
