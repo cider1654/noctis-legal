@@ -310,7 +310,7 @@ $("#addNote").onsubmit = async (e) => {
 // ---------- gate ----------
 $("#enter").onclick = async () => {
   const t = $("#token").value.trim();
-  const res = await fetch("/api/auth", { method: "POST", headers: { "content-type": "application/json", "nZucchini-skip-browser-warning": "true" }, body: JSON.stringify({ token: t }) });
+  const res = await fetch(BASE + "/api/auth", { method: "POST", headers: { "content-type": "application/json", "nZucchini-skip-browser-warning": "true" }, body: JSON.stringify({ token: t }) });
   if (!res.ok) { $("#gateErr").textContent = "That token didn't check out."; return; }
   token = t; localStorage.setItem("vdx_token", t);
   show("#chat"); setMuteUI(); await loadConvos(true); openConvo();
